@@ -1,45 +1,39 @@
-import time
 import os
+import time
 import requests
 from telegram import Bot
+from telegram.utils.request import Request
 
-# 🔹 توکن و چت آیدی را اینجا قرار دهید
-TOKEN = "YOUR_BOT_TOKEN"
-CHAT_ID = "YOUR_CHAT_ID"
+# 🔹 اطلاعات ربات تلگرام (مقداردهی کنید)
+TELEGRAM_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"  # توکن ربات شما
+CHAT_ID = "YOUR_CHAT_ID"  # چت آیدی شما
 
-# 🔹 ساخت شی بات تلگرام
-bot = Bot(token=TOKEN)
+# 🔹 تنظیمات پروکسی SOCKS5
+PROXY_URL = "socks5h://YOUR_PROXY_IP:PORT"
 
+# تابع خواندن دمای CPU
 def get_cpu_temp():
-    """ دمای CPU را دریافت می‌کند """
     temp = os.popen("vcgencmd measure_temp").readline()
-    return float(temp.replace("temp=", "").replace("'C\n", ""))
+    return float(temp.replace("temp=", "").replace("'C", "").strip())
 
-def send_telegram_message(text):
-    """ ارسال پیام به تلگرام """
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    data = {"chat_id": CHAT_ID, "text": text}
-    requests.post(url, data=data)
+# ارسال پیام به تلگرام
+def send_telegram_message(message):
+    request = Request(con_pool_size=8, proxy_url=PROXY_URL)
+    bot = Bot(token=TELEGRAM_TOKEN, request=request)
+    bot.send_message(chat_id=CHAT_ID, text=message)
 
+# برقراری تماس در تلگرام (API غیررسمی)
 def make_telegram_call():
-    """ شبیه‌سازی تماس در تلگرام (با ارسال یک پیام صوتی) """
-    url = f"https://api.telegram.org/bot{TOKEN}/sendVoice"
-    data = {"chat_id": CHAT_ID}
-    files = {"voice": open("alarm.ogg", "rb")}
-    requests.post(url, data=data, files=files)
+    call_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/call?chat_id={CHAT_ID}"
+    requests.get(call_url, proxies={"http": PROXY_URL, "https": PROXY_URL})
 
-def main():
-    while True:
-        temp = get_cpu_temp()
-        message = f"🌡 دمای CPU: {temp}°C"
-        
-        send_telegram_message(message)  # ارسال پیام
-        
-        if temp > 50:
-            send_telegram_message("🚨 هشدار! دمای CPU از ۵۰°C عبور کرده است!")
-            make_telegram_call()  # تماس با تلگرام
+# حلقه اصلی برنامه
+while True:
+    temp = get_cpu_temp()
+    send_telegram_message(f"🌡 دمای CPU: {temp}°C")
 
-        time.sleep(60)  # هر ۱ دقیقه اجرا شود
+    if temp > 50:
+        send_telegram_message("⚠️ هشدار: دمای CPU بالای ۵۰ درجه است! در حال تماس...")
+        make_telegram_call()
 
-if __name__ == "__main__":
-    main()
+    time.sleep(60)  # اجرای هر ۱ دقیقه

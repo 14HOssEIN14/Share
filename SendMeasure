@@ -1,0 +1,45 @@
+import time
+import os
+import requests
+from telegram import Bot
+
+# 🔹 توکن و چت آیدی را اینجا قرار دهید
+TOKEN = "YOUR_BOT_TOKEN"
+CHAT_ID = "YOUR_CHAT_ID"
+
+# 🔹 ساخت شی بات تلگرام
+bot = Bot(token=TOKEN)
+
+def get_cpu_temp():
+    """ دمای CPU را دریافت می‌کند """
+    temp = os.popen("vcgencmd measure_temp").readline()
+    return float(temp.replace("temp=", "").replace("'C\n", ""))
+
+def send_telegram_message(text):
+    """ ارسال پیام به تلگرام """
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    data = {"chat_id": CHAT_ID, "text": text}
+    requests.post(url, data=data)
+
+def make_telegram_call():
+    """ شبیه‌سازی تماس در تلگرام (با ارسال یک پیام صوتی) """
+    url = f"https://api.telegram.org/bot{TOKEN}/sendVoice"
+    data = {"chat_id": CHAT_ID}
+    files = {"voice": open("alarm.ogg", "rb")}
+    requests.post(url, data=data, files=files)
+
+def main():
+    while True:
+        temp = get_cpu_temp()
+        message = f"🌡 دمای CPU: {temp}°C"
+        
+        send_telegram_message(message)  # ارسال پیام
+        
+        if temp > 50:
+            send_telegram_message("🚨 هشدار! دمای CPU از ۵۰°C عبور کرده است!")
+            make_telegram_call()  # تماس با تلگرام
+
+        time.sleep(60)  # هر ۱ دقیقه اجرا شود
+
+if __name__ == "__main__":
+    main()
